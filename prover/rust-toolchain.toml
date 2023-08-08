@@ -1,4 +1,5 @@
 [toolchain]
-channel = "nightly-2023-08-04"  # Use an appropriate date for a newer nightly version
+channel = "nightly-2022-10-28"
 components = [ "rustfmt", "rust-src" ]
+targets = [ "wasm32-unknown-unknown" ]
 profile = "minimal"
