@@ -13,8 +13,6 @@
 // limitations under the License.
 
 use clap::{Arg, Command};
-
-use clap::Parser;
 use subxt::{
 	ext::sp_core::{sr25519::Pair as SubxtPair, Pair as SubxtPairT},
 	tx::PairSigner,
@@ -27,8 +25,8 @@ pub mod substrate_node {}
 
 use risc0_zkvm::{
     SegmentReceipt,
-    serde::{from_slice, to_vec},
-    sha::Digest,
+    serde::to_vec,
+    // sha::Digest,
     Executor, ExecutorEnv, SessionReceipt,
 };
 use methods::{HASH_ELF, HASH_ID};
@@ -36,15 +34,8 @@ use methods::{HASH_ELF, HASH_ID};
 /// Hash the given bytes, returning the digest and a [SessionReceipt] that can
 /// be used to verify that the that the hash was computed correctly (i.e. that
 /// the Prover knows a preimage for the given SHA-256 hash)
-///
-/// Select which method to use with `use_rust_crypto`.
-/// HASH_ELF uses the risc0_zkvm::sha interface for hashing.
-/// HASH_RUST_CRYPTO_ELF uses RustCrypto's [sha2] crate, patched to use the RISC
-/// Zero accelerator. See `src/methods/guest/Cargo.toml` for the patch
-/// definition, which can be used to enable SHA-256 accelerrator support
-/// everywhere the [sha2] crate is used.
-// fn provably_hash(input: &str, use_rust_crypto: bool) -> (Digest, SessionReceipt) {
-fn provably_hash(input: &str, use_rust_crypto: bool) -> SessionReceipt {
+// fn provably_hash(input: &str) -> (Digest, SessionReceipt) {
+fn provably_hash(input: &str) -> SessionReceipt {
     let env = ExecutorEnv::builder()
         .add_input(&to_vec(input).unwrap())
         .build();
@@ -73,8 +64,8 @@ async fn main() {
     let message = matches.get_one::<String>("message").unwrap();
 
     // Prove hash the message.
-    // let (digest, receipt) = provably_hash(message, false);
-    let receipt = provably_hash(message, false);
+    // let (digest, receipt) = provably_hash(message);
+    let receipt = provably_hash(message);
 
     println!("Current image id is: {:?}", HASH_ID);
 
@@ -89,7 +80,7 @@ async fn main() {
         .map(|SegmentReceipt { seal, index }| (seal, index))
         .collect();
 
-    	// This is the well-known //Alice key. Don't use in a real application
+    // This is the well-known //Alice key. Don't use in a real application
 	let restored_key = SubxtPair::from_string(
 		"0xe5be9a5092b81bca64be81d212e7f2f9eba183bb7a90954f7b76361f6edb5c0a",
 		None,
@@ -105,7 +96,7 @@ async fn main() {
             // Name of the pallet in chain metadata: example
             .example()
             // Specify the extrinsic and arguments
-            .store_and_verify_proof(substrate_receipt, receipt.journal,),
+            .verify_preimage_proof(substrate_receipt, receipt.journal,),
         &signer,
     )
     .await

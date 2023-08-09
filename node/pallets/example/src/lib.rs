@@ -22,11 +22,11 @@ pub mod pallet {
 	use frame_support::{
 		inherent::Vec,
 		pallet_prelude::*,
-		traits::{BalanceStatus, Currency, ReservableCurrency},
+		dispatch::Dispatchable,
+		traits::{Currency, ReservableCurrency},
 	};
 	use frame_system::pallet_prelude::*;
 	use risc0_zkvm::{SegmentReceipt, SessionReceipt};
-	// use risc0_zkvm::{SegmentReceipt};
 
 	// We more or less know image id will always be this so, declare it here and not in Config
 	type ImageId = [u32; 8];
@@ -42,6 +42,11 @@ pub mod pallet {
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
+		type RuntimeCall: Parameter
+			+ Dispatchable<RuntimeOrigin = Self::RuntimeOrigin>
+			+ From<Call<Self>>
+			+ IsType<<Self as frame_system::Config>::RuntimeCall>
+			+ From<frame_system::Call<Self>>;
 		type Currency: Currency<<Self as frame_system::Config>::AccountId>
 			+ ReservableCurrency<Self::AccountId>;
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
@@ -65,8 +70,9 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		Committed(BoundedVec<u8, T::HashLength>),
+		OtherCalled,
 		/// Proof was successfully verified and will be stored
-		ProofVerified,
+		ProofVerified(ImageId),
 	}
 
 	#[pallet::error]
@@ -81,7 +87,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		#[pallet::call_index(0)]
 		// TODO: Weights
-		#[pallet::weight(10000000)]
+		#[pallet::weight({1000000})]
 		pub fn commit(
 			origin: OriginFor<T>,
 			// image_id: ImageId,
@@ -98,13 +104,13 @@ pub mod pallet {
 
 		#[pallet::call_index(2)]
 		// TODO: Weights
-		#[pallet::weight(100000)]
-		pub fn store_and_verify_proof(
+		#[pallet::weight({1000000})]
+		pub fn verify_preimage_proof(
 			origin: OriginFor<T>,
 			receipt_data: Vec<(Vec<u32>, u32)>,
 			journal: Vec<u8>,
 		) -> DispatchResult {
-			let who = ensure_signed(origin)?;
+			ensure_signed(origin.clone())?;
 
 			let segments: Vec<SegmentReceipt> = receipt_data
 				.clone()
@@ -113,16 +119,35 @@ pub mod pallet {
 				.collect();
 
 			// Unique identifier of the program
+			// TODO: We can map from stored image ids -> extrinsics and call the relevant extrinsic if that image id is verified
 			let image_id = [3979446179, 1473523645, 3571476172, 1865387470, 3136038554, 1943042092, 3537243349, 1796109856];
 		
 			let receipt = SessionReceipt { segments, journal };
+			// Verify the proof
 			receipt.verify(image_id).map_err(|_| Error::<T>::ProofNotVerified)?;
 
-			Self::deposit_event(Event::<T>::ProofVerified);
+			// Demonstrate that we verified the proof for a given image
+			Self::deposit_event(Event::<T>::ProofVerified(image_id));
 
-			// The user is verified. They can now call this
-			// other_call.call()?;
+			// // The user is verified. They can now proceed to the call
+			let call = Call::do_other_thing {};
+			// Get runtime-level call. Assuming we want to call any extrinsic in the runtime
+			let call = <T as Config>::RuntimeCall::from(call);
+			// There are a number of ways to do this in Substrate
+			let _ = call.dispatch(origin);
 
+			Ok(())
+		}
+
+		#[pallet::call_index(3)]
+		// TODO: Weights
+		#[pallet::weight({1000000})]
+		/// Represents some extrinsic action deferred to as a result of a verification of a proof whose image id
+		/// is related to this extrinsic
+		pub fn do_other_thing(
+			_origin: OriginFor<T>,
+		) -> DispatchResult {
+			Self::deposit_event(Event::<T>::OtherCalled);
 			Ok(())
 		}
 	}

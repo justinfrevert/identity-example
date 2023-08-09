@@ -279,6 +279,7 @@ parameter_types! {
 }
 
 impl pallet_example::Config for Runtime {
+	type RuntimeCall = RuntimeCall;
 	type Currency = Balances;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = pallet_example::weights::SubstrateWeight<Runtime>;
