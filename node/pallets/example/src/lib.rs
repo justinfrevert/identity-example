@@ -101,7 +101,6 @@ pub mod pallet {
 		#[pallet::weight(100000)]
 		pub fn store_and_verify_proof(
 			origin: OriginFor<T>,
-			image_id: ImageId,
 			receipt_data: Vec<(Vec<u32>, u32)>,
 			journal: Vec<u8>,
 		) -> DispatchResult {
@@ -113,10 +112,9 @@ pub mod pallet {
 				.map(|(seal, index)| SegmentReceipt { seal, index })
 				.collect();
 
-			// let receipt = SessionReceipt { segments, journal };
-			// let receipt = Receipt { segments, journal };
-
-			// let inner_receipt = InnerReceipt::Flat(SegmentReceipts(segments));
+			// Unique identifier of the program
+			let image_id = [3979446179, 1473523645, 3571476172, 1865387470, 3136038554, 1943042092, 3537243349, 1796109856];
+		
 			let receipt = SessionReceipt { segments, journal };
 			receipt.verify(image_id).map_err(|_| Error::<T>::ProofNotVerified)?;
 

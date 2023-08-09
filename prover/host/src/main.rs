@@ -1,38 +1,3 @@
-// use clap::{Arg, Command};
-// use risc0_zkvm::{
-//     serde::{from_slice, to_vec},
-//     sha::Digest,
-//     Prover, Receipt,
-// };
-// use sha_methods::{HASH_ELF, HASH_ID};
-
-// fn provably_hash(input: &str) -> Receipt {
-//     // Make the prover.
-//     let mut prover = Prover::new(HASH_ELF)
-//         .expect("Prover should be constructed from matching code and method ID");
-
-//     prover.add_input_u32_slice(&to_vec(input).expect("input string should serialize"));
-
-//     // Run prover & generate receipt
-//     prover.run().expect("Code should be provable")
-// }
-
-// fn main() {
-//     // Parse command line
-//     let matches = Command::new("hash")
-//         .arg(Arg::new("message").default_value(""))
-//         .get_matches();
-//     let message = matches.get_one::<String>("message").unwrap();
-
-//     // Prove hash and verify it
-//     let receipt = provably_hash(message);
-//     receipt.verify(&HASH_ID).expect("Proven code should verify");
-
-//     let digest: Digest = from_slice(&receipt.journal).expect("Journal should contain SHA Digest");
-
-//     println!("I provably know data whose SHA-256 hash is {}", digest);
-// }
-
 // Copyright 2023 RISC Zero, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -48,12 +13,24 @@
 // limitations under the License.
 
 use clap::{Arg, Command};
+
+use clap::Parser;
+use subxt::{
+	ext::sp_core::{sr25519::Pair as SubxtPair, Pair as SubxtPairT},
+	tx::PairSigner,
+	OnlineClient, PolkadotConfig,
+};
+
+// Runtime types, etc
+#[subxt::subxt(runtime_metadata_path = "./metadata.scale")]
+pub mod substrate_node {}
+
 use risc0_zkvm::{
+    SegmentReceipt,
     serde::{from_slice, to_vec},
     sha::Digest,
     Executor, ExecutorEnv, SessionReceipt,
 };
-// use sha_methods::{HASH_ELF, HASH_ID, HASH_RUST_CRYPTO_ELF};
 use methods::{HASH_ELF, HASH_ID};
 
 /// Hash the given bytes, returning the digest and a [SessionReceipt] that can
@@ -72,16 +49,7 @@ fn provably_hash(input: &str, use_rust_crypto: bool) -> SessionReceipt {
         .add_input(&to_vec(input).unwrap())
         .build();
 
-    // let elf = if use_rust_crypto {
-    // HASH_RUST_CRYPTO_ELF
-    // } else {
-    // HASH_ELF;
-    // };
-
     let elf = HASH_ELF;
-
-    // let mut exec = default_executor_from_elf(env, elf).unwrap();
-
     let mut exec = Executor::from_elf(env.clone(), elf).unwrap();
 
     let session = exec.run().unwrap();
@@ -96,7 +64,8 @@ fn provably_hash(input: &str, use_rust_crypto: bool) -> SessionReceipt {
     receipt
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     // Parse command line
     let matches = Command::new("hash")
         .arg(Arg::new("message").default_value(""))
@@ -107,10 +76,44 @@ fn main() {
     // let (digest, receipt) = provably_hash(message, false);
     let receipt = provably_hash(message, false);
 
+    println!("Current image id is: {:?}", HASH_ID);
+
     // Verify the receipt, ensuring the prover knows a valid SHA-256 preimage.
     receipt
         .verify(HASH_ID)
         .expect("receipt verification failed");
+
+    let substrate_receipt = receipt
+        .segments
+        .into_iter()
+        .map(|SegmentReceipt { seal, index }| (seal, index))
+        .collect();
+
+    	// This is the well-known //Alice key. Don't use in a real application
+	let restored_key = SubxtPair::from_string(
+		"0xe5be9a5092b81bca64be81d212e7f2f9eba183bb7a90954f7b76361f6edb5c0a",
+		None,
+	)
+	.unwrap();
+	let signer = PairSigner::new(restored_key);
+
+    let api = OnlineClient::<PolkadotConfig>::new().await.unwrap();
+
+    api.tx()
+    .sign_and_submit_then_watch_default(
+        &substrate_node::tx()
+            // Name of the pallet in chain metadata: example
+            .example()
+            // Specify the extrinsic and arguments
+            .store_and_verify_proof(substrate_receipt, receipt.journal,),
+        &signer,
+    )
+    .await
+    .unwrap()
+    .wait_for_finalized()
+    .await
+    .unwrap();
+println!("Sent tx");
 
     // println!("I provably know data whose SHA-256 hash is {}", digest);
 }

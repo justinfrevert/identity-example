@@ -20,8 +20,8 @@ scale-info = { version = "2.5.0", default-features = false, features = ["derive"
 frame-benchmarking = { version = "4.0.0-dev", default-features = false, optional = true, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.42" }
 frame-support = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.42" }
 frame-system = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.42" }
-# risc0-zkvm = { version = "0.14.0", default-features = false, git = "https://github.com/risc0/risc0", rev = "d83c7fef80d0ebb87bc86567447efee633a24c4e" }
-risc0-zkvm = { version = "0.14.0", default-features = false, path ="../../../../risc0/risc0/zkvm" }
+risc0-zkvm = { version = "0.14.0", default-features = false, git = "https://github.com/risc0/risc0", rev = "d83c7fef80d0ebb87bc86567447efee633a24c4e" }
+# risc0-zkvm = { version = "0.14.0", default-features = false, path ="../../../../risc0/risc0/zkvm" }
 
 [dev-dependencies]
 sp-core = { version = "7.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.42" }
@@ -36,7 +36,7 @@ std = [
 	"frame-support/std",
 	"frame-system/std",
 	"scale-info/std",
-	#"risc0-zkvm/std"
+	"risc0-zkvm/std",
 ]
 runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]
 try-runtime = ["frame-support/try-runtime"]

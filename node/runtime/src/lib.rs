@@ -300,7 +300,7 @@ construct_runtime!(
 		Balances: pallet_balances,
 		TransactionPayment: pallet_transaction_payment,
 		Sudo: pallet_sudo,
-		ProverMgmt: pallet_example,
+		Example: pallet_example,
 	}
 );
 
