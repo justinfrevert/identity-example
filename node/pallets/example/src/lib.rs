@@ -120,7 +120,7 @@ pub mod pallet {
 
 			// Unique identifier of the program
 			// TODO: We can map from stored image ids -> extrinsics and call the relevant extrinsic if that image id is verified
-			let image_id = [3979446179, 1473523645, 3571476172, 1865387470, 3136038554, 1943042092, 3537243349, 1796109856];
+			let image_id = [2932861201, 2914988686, 3522217409, 393865482, 2544155749, 4138443510, 913301936, 2788766869];
 		
 			let receipt = SessionReceipt { segments, journal };
 			// Verify the proof
