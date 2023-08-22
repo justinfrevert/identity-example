@@ -12,7 +12,7 @@ TODO: Verify whether the included `.gitignore`, `LICENSE`, and `rust-toolchain` 
 This is just an example prover application based on the RISC Zero sha example which can create the proofs that the onchcain logic expects to verify.
 
 ## Sync chain metadata
-If the onchain extrinsic signatures have been updated, the local metadata will need to be updated. Run `subxt metadata -f bytes > metadata.scale`
+If the onchain extrinsic signatures have been updated, the local metadata will need to be updated. Run `subxt metadata -f bytes > metadata.scale`, and replace the current `metadata.scale` file
 
 ## Running
 Run `cargo run` to run the prover and send a transaction which uploads the proof

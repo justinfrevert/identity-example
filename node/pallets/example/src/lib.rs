@@ -20,9 +20,9 @@ pub use weights::*;
 pub mod pallet {
 	use super::*;
 	use frame_support::{
+		dispatch::Dispatchable,
 		inherent::Vec,
 		pallet_prelude::*,
-		dispatch::Dispatchable,
 		traits::{Currency, ReservableCurrency},
 	};
 	use frame_system::pallet_prelude::*;
@@ -59,12 +59,15 @@ pub mod pallet {
 
 	#[pallet::storage]
 	/// Store all commitments
-	pub(super) type Commitments<T: Config> =
-	StorageMap<_, Blake2_128Concat,
-	// The hash
-	BoundedVec<u8, T::HashLength>,
-	// Was verified or not
-	bool, OptionQuery>;
+	pub(super) type Commitments<T: Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		// The hash
+		BoundedVec<u8, T::HashLength>,
+		// Was verified or not
+		bool,
+		OptionQuery,
+	>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -80,7 +83,7 @@ pub mod pallet {
 		/// Already submitted this hash
 		AlreadySubmitted,
 		/// Proof could not be verified.
-		ProofNotVerified
+		ProofNotVerified,
 	}
 
 	#[pallet::call]
@@ -91,7 +94,7 @@ pub mod pallet {
 		pub fn commit(
 			origin: OriginFor<T>,
 			// image_id: ImageId,
-			hash: BoundedVec<u8, T::HashLength>
+			hash: BoundedVec<u8, T::HashLength>,
 		) -> DispatchResult {
 			let _who = ensure_signed(origin)?;
 			ensure!(!Commitments::<T>::contains_key(&hash), Error::<T>::AlreadySubmitted);
@@ -109,6 +112,10 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			receipt_data: Vec<(Vec<u32>, u32)>,
 			journal: Vec<u8>,
+			// Unique identifier of the program
+			// TODO: We can map from stored image ids -> extrinsics and call the relevant extrinsic
+			// if that image id is verified
+			image_id: [u32; 8],
 		) -> DispatchResult {
 			ensure_signed(origin.clone())?;
 
@@ -118,10 +125,9 @@ pub mod pallet {
 				.map(|(seal, index)| SegmentReceipt { seal, index })
 				.collect();
 
-			// Unique identifier of the program
-			// TODO: We can map from stored image ids -> extrinsics and call the relevant extrinsic if that image id is verified
-			let image_id = [2932861201, 2914988686, 3522217409, 393865482, 2544155749, 4138443510, 913301936, 2788766869];
-		
+			// let image_id = [2932861201, 2914988686, 3522217409, 393865482, 2544155749,
+			// 4138443510, 913301936, 2788766869];
+
 			let receipt = SessionReceipt { segments, journal };
 			// Verify the proof
 			receipt.verify(image_id).map_err(|_| Error::<T>::ProofNotVerified)?;
@@ -142,11 +148,9 @@ pub mod pallet {
 		#[pallet::call_index(3)]
 		// TODO: Weights
 		#[pallet::weight({1000000})]
-		/// Represents some extrinsic action deferred to as a result of a verification of a proof whose image id
-		/// is related to this extrinsic
-		pub fn do_other_thing(
-			_origin: OriginFor<T>,
-		) -> DispatchResult {
+		/// Represents some extrinsic action deferred to as a result of a verification of a proof
+		/// whose image id is related to this extrinsic
+		pub fn do_other_thing(_origin: OriginFor<T>) -> DispatchResult {
 			Self::deposit_event(Event::<T>::OtherCalled);
 			Ok(())
 		}
